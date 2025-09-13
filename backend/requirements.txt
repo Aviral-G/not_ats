@@ -1,0 +1,10 @@
+pdfplumber
+python-docx
+regex
+openai
+groq
+dotenv
+pymupdf
+httpx
+uvicorn
+python-multipart
