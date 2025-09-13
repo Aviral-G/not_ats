@@ -16,7 +16,6 @@ class ResumeParser:
     def __init__(self):
         self.EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
         self.linkedins = []
-        # self.LINKEDIN_REGEX = re.compile(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[A-Za-z0-9_-]+/?", re.IGNORECASE)
 
     def extract_text_from_pdf(self, file_path: str) -> str:
         # Extract text from a PDF file using pdfplumber and links using PyMuPDF
@@ -107,12 +106,14 @@ class ResumeParser:
 
     def extract_emails(self, page_texts: list[str]) -> list[str]:
         emails = []
+        no_email_count = 1
         for page in page_texts:
             email_matches = self.EMAIL_REGEX.findall(page)
             if email_matches:
                 emails.append(email_matches[0])  # Take the first email found on the page
             else:
-                emails.append("NO_EMAIL")
+                emails.append(f"NO_EMAIL_{no_email_count}")
+                no_email_count += 1
         return emails
 
     def extract_linkedin_from_page(self, page) -> str:
@@ -122,27 +123,6 @@ class ResumeParser:
             if 'uri' in link and link['uri'] and 'linkedin.com/in/' in link['uri']:
                 return link['uri']
         return "NO_LINKEDIN"
-
-    def split_text(resume_texts: list[str], emails: list[str]) -> list[str]:
-        # Split text into sections based on metadata as well as email occurrences to check for 2-page resumes
-
-        if len(resume_texts) != len(emails):
-            raise ValueError("The number of resumes does not match the number of extracted emails.")
-        
-        merged_resumes=[]
-        i = 0
-        while i < len(resume_texts):
-            current_resume = resume_texts[i]
-            current_email = emails[i].strip().lower()
-
-            if i +1 < len(emails) and emails[i+1].strip().lower() == current_email:
-                merged_text = current_resume +"\n\n" + resume_texts[i+1]
-                merged_resumes.append(merged_text)
-                i += 2  
-            else:
-                merged_resumes.append(current_resume)
-                i += 1
-        return merged_resumes
         
 
     def generate_structured_data(self, resume_text: list[str], emails: list[str], target_job: str = "") -> dict:
