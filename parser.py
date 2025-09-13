@@ -8,15 +8,26 @@ from groq import Groq
 from openai import OpenAI
 from dotenv import load_dotenv
 import unicodedata
+import fitz
 load_dotenv()
 
 
 class ResumeParser:
     def __init__(self):
         self.EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
+        self.linkedins = []
+        # self.LINKEDIN_REGEX = re.compile(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[A-Za-z0-9_-]+/?", re.IGNORECASE)
 
     def extract_text_from_pdf(self, file_path: str) -> str:
-        # Extract text from a PDF file using pdfplumber
+        # Extract text from a PDF file using pdfplumber and links using PyMuPDF
+        # First, extract links using PyMuPDF
+        doc = fitz.open(file_path)
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            self.linkedins.append(self.extract_linkedin_from_page(page))
+        doc.close()
+        
+        # Then extract text using pdfplumber
         with pdfplumber.open(file_path) as pdf:
             page_texts = []
             for page in pdf.pages:
@@ -104,6 +115,14 @@ class ResumeParser:
                 emails.append("NO_EMAIL")
         return emails
 
+    def extract_linkedin_from_page(self, page) -> str:
+        # Extract LinkedIn URL from PDF page using PyMuPDF
+        links = page.get_links()
+        for link in links:
+            if 'uri' in link and link['uri'] and 'linkedin.com/in/' in link['uri']:
+                return link['uri']
+        return "NO_LINKEDIN"
+
     def split_text(resume_texts: list[str], emails: list[str]) -> list[str]:
         # Split text into sections based on metadata as well as email occurrences to check for 2-page resumes
 
@@ -137,7 +156,7 @@ class ResumeParser:
 
         structured_data = {}
 
-        for resume, email in zip(resume_text, emails):
+        for resume, email, linkedin in zip(resume_text, emails, self.linkedins):
 
             # if email == "NO_EMAIL":
             #     continue
@@ -227,10 +246,19 @@ class ResumeParser:
             try:
                 # Clean the response text before parsing JSON
                 cleaned_response = self.clean_text(response.output_text)
+
                 parsed_data = json.loads(cleaned_response)
                 
                 # Also clean any string values in the parsed data recursively
                 cleaned_parsed_data = self.clean_json_data(parsed_data)
+                if "full_name" in cleaned_parsed_data:
+                    cleaned_parsed_data = {
+                        "full_name": cleaned_parsed_data["full_name"],
+                        "linkedin": linkedin,
+                        **{k: v for k, v in cleaned_parsed_data.items() if k != "full_name"}
+                    }
+                else:
+                    cleaned_parsed_data["linkedin"] = linkedin
                 structured_data[email] = cleaned_parsed_data
             except json.JSONDecodeError:
                 structured_data[email] = {"error": "Failed to parse response", "raw_response": response.output_text}

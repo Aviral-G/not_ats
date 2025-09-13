@@ -4,3 +4,4 @@ regex
 openai
 groq
 dotenv
+pymupdf
