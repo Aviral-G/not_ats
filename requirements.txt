@@ -1,7 +1,0 @@
-pdfplumber
-python-docx
-regex
-openai
-groq
-dotenv
-pymupdf
