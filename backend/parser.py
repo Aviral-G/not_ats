@@ -246,6 +246,26 @@ class ResumeParser:
         return structured_data
 
 
+def process_resume_file(file_path: str, target_job: str = "Data Scientist") -> dict:
+    """
+    Wrapper function to process a resume file and return structured data
+    This provides a simpler interface for API usage
+    """
+    parser = ResumeParser()
+    
+    # Extract text and process
+    page_texts = parser.extract_text_from_pdf(file_path)
+    emails = parser.extract_emails(page_texts)
+    structured_data = parser.generate_structured_data(page_texts, emails, target_job)
+    
+    return {
+        "success": True,
+        "pages_processed": len(page_texts),
+        "resumes_found": len(emails),
+        "data": structured_data
+    }
+
+
 
 if __name__ == "__main__":
 
